@@ -2,6 +2,8 @@ import http = require('http');
 import fs = require('fs');
 import * as WebRequest from 'web-request';
 
+import { Promise } from 'es6-promise';
+
 class AuthorRow {
     id: string;
     name: string;
@@ -82,6 +84,11 @@ class Scraper {
         //req.end();
 
         let authorRequest = WebRequest.get(`http://public.tableau.com/profile/api/${authorId}`);
+        let followerRequest = WebRequest.get(`http://public.tableau.com/profile/api/followers/${authorId}?count=1000&index=0`);
+        let followingRequest = WebRequest.get(`http://public.tableau.com/profile/api/following/${authorId}?count=1000&index=0`);
+        Promise.all([authorRequest, followerRequest, followingRequest]).then((results) => {
+            console.log(JSON.stringify(results[0].content));
+        });
     }
 
     private processAuthorProfile(profileJSON: string): void {
