@@ -17,5 +17,8 @@
     "nodemon": "^1.12.1",
     "ts-node": "^3.3.0",
     "typescript": "^2.5.2"
+  },
+  "dependencies": {
+    "web-request": "^1.0.7"
   }
 }
