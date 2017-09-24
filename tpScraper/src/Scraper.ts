@@ -24,6 +24,13 @@ class WorkbookRow {
     viewCount: number;
 }
 
+interface Followers {
+    authorFeedInfos: Array<AuthorProfile>;
+    hasMoreResults: boolean;
+}
+
+interface Following extends Followers {}
+
 interface AuthorProfile {
     address: string;
     name: string;
@@ -46,63 +53,103 @@ class Scraper {
     private workbooksMap: {[key: string]: WorkbookRow} = {};
     private authorScraped: number = 0;
     private authorsToQuery: Array<string> = [];
+    private maxAuthors: number = 1000;
     public constructor(private authorsFile: string, private workbooksFile: string) {
         fs.appendFileSync(authorsFile, this.GetAuthorTableSchema());
         fs.appendFileSync(workbooksFile, this.GetAuthorTableSchema());
+
     };
 
     //the entry points for the scrape
     public initialize(ids: string[]): void {
-        ids.forEach(id => {
-            this.initializeScraping(id);
-        });
+        this.authorsToQuery = ids;
+        this.scrapeArtists();
     }
 
-    public initializeScraping(authorId: string): void {
+    public scrapeArtists(): void {
+        console.log(Object.keys(this.authorsMap).length);
+        console.log(this.authorsToQuery.length);
+        if (this.authorsToQuery.length > 0 && Object.keys(this.authorsMap).length < this.maxAuthors) {
+            let currId = this.authorsToQuery.pop();
+            if (!currId) {
+                console.error('curr id is null');
+                return;
+            }
+            if (!this.authorsMap[currId]) {
+                this.scrapeAuthor(currId).then(() => {
+                    this.scrapeArtists();
+                });         
+            } else {
+                this.scrapeArtists();
+            }
+        } else {
+            console.log('finished scraping~~~');
+            return; 
+        }
+    }
+
+    public async scrapeAuthor(authorId: string): Promise<void> {
         const options: http.RequestOptions = {
             host: "public.tableau.com",
             path: `/profile/api/${authorId}`
         };
+        console.log('scraping author: ' + authorId);
 
         let body: Array<Buffer> = [];
-        const req = http.request(options, (res) => {
-            console.log(`STATUS: ${res.statusCode}`);
-            console.log(`HEADERS: ${JSON.stringify(res.headers)}`);
-            res.setEncoding('utf8');
-            res.on('data', (chunk) => {
-                if (typeof(chunk) === "string") {
-                    this.processAuthorProfile(chunk);
-                } else {
-                    body.push(chunk);
-                }
-            });
-            res.on('end', () => {
-                this.processAuthorProfile(Buffer.concat(body).toString());
-                console.log('No more data in response.');
-            });
-        });
+        // const req = http.request(options, (res) => {
+        //     console.log(`STATUS: ${res.statusCode}`);
+        //     console.log(`HEADERS: ${JSON.stringify(res.headers)}`);
+        //     res.setEncoding('utf8');
+        //     res.on('data', (chunk) => {
+        //         if (typeof(chunk) === "string") {
+        //             //this.processAuthorProfile(chunk);
+        //         } else {
+        //             body.push(chunk);
+        //         }
+        //     });
+        //     res.on('end', () => {
+        //         //this.processAuthorProfile(Buffer.concat(body).toString());
+        //         console.log('No more data in response.');
+        //     });
+        // });
         //req.end();
 
-        let authorRequest = WebRequest.get(`http://public.tableau.com/profile/api/${authorId}`);
-        let followerRequest = WebRequest.get(`http://public.tableau.com/profile/api/followers/${authorId}?count=1000&index=0`);
-        let followingRequest = WebRequest.get(`http://public.tableau.com/profile/api/following/${authorId}?count=1000&index=0`);
-        Promise.all([authorRequest, followerRequest, followingRequest]).then((results) => {
-            console.log(JSON.stringify(results[0].content));
+        let authorRequest = await WebRequest.get(`http://public.tableau.com/profile/api/${authorId}`);
+        let followerRequest = await WebRequest.get(`http://public.tableau.com/profile/api/followers/${authorId}?count=1000&index=0`);
+        let followingRequest = await WebRequest.get(`http://public.tableau.com/profile/api/following/${authorId}?count=1000&index=0`);
+        return Promise.all([authorRequest, followerRequest, followingRequest]).then((results) => {
+            console.log(results[0].statusCode);
+            console.log(results[1].statusCode);
+            console.log(results[1].message);
+            console.log(results[2].statusCode);
+            let profile: AuthorProfile = JSON.parse(results[0].content);
+            let followers: Followers = JSON.parse(results[1].content);
+            let following: Following = JSON.parse(results[2].content);
+            let followersId: Array<string> = followers.authorFeedInfos.map((follower) => {
+                this.authorsToQuery.push(follower.profileName);
+                return follower.profileName;
+            });
+            let followingId: Array<string> = following.authorFeedInfos.map((following) => {
+                this.authorsToQuery.push(following.profileName);
+                return following.profileName;
+            });
+            this.processAuthorProfile(profile, followersId, followingId);
         });
     }
 
-    private processAuthorProfile(profileJSON: string): void {
-        let profile: AuthorProfile = JSON.parse(profileJSON);
+    private processAuthorProfile(profile: AuthorProfile, followers: Array<string>, following: Array<string>): void {
         let workbooks: Array<Workbook> = profile.workbooks;
         this.processWorkbooks(workbooks, profile.profileName);
-        // this.authorsMap[profile.profileName] = {
-        //     id: profile.profileName,
-        //     name: profile.name,
-        //     followerCount: profile.totalNumberOfFollowers,
-        //     followingCount: profile.totalNumberOfFollowing,
-        //     workbookCount: profile.visibleWorkbookCount,
-        //     avatarUrl: profile.avatarUrl
-        // }
+        this.authorsMap[profile.profileName] = {
+            id: profile.profileName,
+            name: profile.name,
+            followerCount: profile.totalNumberOfFollowers,
+            followingCount: profile.totalNumberOfFollowing,
+            workbookCount: profile.visibleWorkbookCount,
+            avatarUrl: profile.avatarUrl,
+            followerIds: followers,
+            followingIds: following
+        }
     }
 
     private processWorkbooks(workbooks: Array<Workbook>, authorId: string) {
