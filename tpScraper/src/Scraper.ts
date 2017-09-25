@@ -2,7 +2,7 @@ import http = require('http');
 import fs = require('fs');
 import * as WebRequest from 'web-request';
 
-import { Promise } from 'es6-promise';
+import { Promise as es6Promise } from 'es6-promise';
 
 class AuthorRow {
     id: string;
@@ -49,15 +49,15 @@ interface Workbook {
 }
 
 class Scraper {
-    private authorsMap: {[key: string]: AuthorRow} = {};
+    private authorsMap: {[key: string]: AuthorRow | {}} = {};
     private workbooksMap: {[key: string]: WorkbookRow} = {};
     private authorScraped: number = 0;
     private authorsToQuery: Array<string> = [];
-    private maxAuthors: number = 1000;
+    private maxAuthors: number = 150;
+    private concurrentCalls: number = 0;
     public constructor(private authorsFile: string, private workbooksFile: string) {
         fs.appendFileSync(authorsFile, this.GetAuthorTableSchema());
-        fs.appendFileSync(workbooksFile, this.GetAuthorTableSchema());
-
+        fs.appendFileSync(workbooksFile, this.GetWorkbookTableSchema());
     };
 
     //the entry points for the scrape
@@ -67,8 +67,9 @@ class Scraper {
     }
 
     public scrapeArtists(): void {
-        console.log(Object.keys(this.authorsMap).length);
-        console.log(this.authorsToQuery.length);
+        console.log("number of artists scraped: " + Object.keys(this.authorsMap).length);
+        console.log("number of artists remaining: " + this.authorsToQuery.length);
+        console.log("number of workbooks scraped: " + Object.keys(this.workbooksMap).length);
         if (this.authorsToQuery.length > 0 && Object.keys(this.authorsMap).length < this.maxAuthors) {
             let currId = this.authorsToQuery.pop();
             if (!currId) {
@@ -76,16 +77,33 @@ class Scraper {
                 return;
             }
             if (!this.authorsMap[currId]) {
+                this.concurrentCalls++;                
                 this.scrapeAuthor(currId).then(() => {
-                    this.scrapeArtists();
-                });         
-            } else {
-                this.scrapeArtists();
+                    this.concurrentCalls--; 
+                    if (Object.keys(this.authorsMap).length < this.maxAuthors) {
+                        this.scrapeArtists();                        
+                    }
+                    console.log("finished scraping author: " + currId);
+                });
+                //indicate i'm already working on this author
+                this.authorsMap[currId] = {};
             }
+            if (this.concurrentCalls > 50) {
+                console.log("~~~~~~~~~~~~~~~~ too much slow down!");
+                return;
+            }
+            setTimeout(() => {
+                this.scrapeArtists();
+            }, 2000);
         } else {
             console.log('finished scraping~~~');
             return; 
         }
+    }
+
+    private printStatus(result :WebRequest.Response<string>): void {
+        console.log(result.statusCode);
+        console.log(result.statusMessage);
     }
 
     public async scrapeAuthor(authorId: string): Promise<void> {
@@ -95,66 +113,98 @@ class Scraper {
         };
         console.log('scraping author: ' + authorId);
 
-        let body: Array<Buffer> = [];
-        // const req = http.request(options, (res) => {
-        //     console.log(`STATUS: ${res.statusCode}`);
-        //     console.log(`HEADERS: ${JSON.stringify(res.headers)}`);
-        //     res.setEncoding('utf8');
-        //     res.on('data', (chunk) => {
-        //         if (typeof(chunk) === "string") {
-        //             //this.processAuthorProfile(chunk);
-        //         } else {
-        //             body.push(chunk);
-        //         }
-        //     });
-        //     res.on('end', () => {
-        //         //this.processAuthorProfile(Buffer.concat(body).toString());
-        //         console.log('No more data in response.');
-        //     });
-        // });
-        //req.end();
-
-        let authorRequest = await WebRequest.get(`http://public.tableau.com/profile/api/${authorId}`);
-        let followerRequest = await WebRequest.get(`http://public.tableau.com/profile/api/followers/${authorId}?count=1000&index=0`);
-        let followingRequest = await WebRequest.get(`http://public.tableau.com/profile/api/following/${authorId}?count=1000&index=0`);
+        let authorRequest = WebRequest.get(`https://public.tableau.com/profile/api/${authorId}`);
+        let followerRequest =  this.getFollowers(authorId);
+        let followingRequest = this.getFollowing(authorId);
         return Promise.all([authorRequest, followerRequest, followingRequest]).then((results) => {
-            console.log(results[0].statusCode);
-            console.log(results[1].statusCode);
-            console.log(results[1].message);
-            console.log(results[2].statusCode);
+            this.printStatus(results[0]);
             let profile: AuthorProfile = JSON.parse(results[0].content);
-            let followers: Followers = JSON.parse(results[1].content);
-            let following: Following = JSON.parse(results[2].content);
-            let followersId: Array<string> = followers.authorFeedInfos.map((follower) => {
-                this.authorsToQuery.push(follower.profileName);
-                return follower.profileName;
-            });
-            let followingId: Array<string> = following.authorFeedInfos.map((following) => {
-                this.authorsToQuery.push(following.profileName);
-                return following.profileName;
-            });
+            let followersId: Array<string> = results[1];
+            let followingId: Array<string> = results[2];
+            this.authorsToQuery = this.authorsToQuery.concat(followingId);
+            this.authorsToQuery = this.authorsToQuery.concat(followersId);
             this.processAuthorProfile(profile, followersId, followingId);
         });
+    }
+
+    public async getFollowers(authorId: string): Promise<Array<string>> {
+        console.log("scraping followers: ");
+        let results: Array<string> = [];
+        let count: number = 200;
+        let index: number = 0;
+        let followerRequest = await WebRequest.get(`https://public.tableau.com/profile/api/followers/${authorId}?count=${count}&index=${index}`);
+        console.log(followerRequest.statusCode);
+        let followers: Followers = JSON.parse(followerRequest.content);
+        if (followers && followers.authorFeedInfos && followers.authorFeedInfos.length > 0) {
+            results = followers.authorFeedInfos.map((profile) => {
+                return profile.profileName;
+            });
+        }
+        while (followers.hasMoreResults) {
+            index = index + count;
+            followerRequest = await WebRequest.get(`https://public.tableau.com/profile/api/followers/${authorId}?count=${count}&index=${index}`);
+            console.log("followers: ");
+            this.printStatus(followerRequest);   
+            followers = JSON.parse(followerRequest.content);
+            followers.authorFeedInfos.forEach((profile) => {
+                results.push(profile.profileName);
+            });
+        }
+        return results;
+    }
+
+    public async getFollowing(authorId: string): Promise<Array<string>> {
+        console.log("scraping following: ");        
+        let results: Array<string> = [];
+        let count: number = 200;
+        let index: number = 0;
+        let followerRequest = await WebRequest.get(`https://public.tableau.com/profile/api/following/${authorId}?count=${count}&index=${index}`);
+        let followings: Followers = JSON.parse(followerRequest.content);
+        if (followings && followings.authorFeedInfos && followings.authorFeedInfos.length > 0) {
+            results = followings.authorFeedInfos.map((profile) => {
+                return profile.profileName;
+            });
+        }
+        while (followings.hasMoreResults) {
+            index = index + count;
+            followerRequest = await WebRequest.get(`https://public.tableau.com/profile/api/following/${authorId}?count=${count}&index=${index}`);
+            console.log("following: ");
+            this.printStatus(followerRequest);  
+            followings = JSON.parse(followerRequest.content);
+            followings.authorFeedInfos.forEach((profile) => {
+                results.push(profile.profileName);
+            });
+        }
+        return results;
     }
 
     private processAuthorProfile(profile: AuthorProfile, followers: Array<string>, following: Array<string>): void {
         let workbooks: Array<Workbook> = profile.workbooks;
         this.processWorkbooks(workbooks, profile.profileName);
-        this.authorsMap[profile.profileName] = {
-            id: profile.profileName,
-            name: profile.name,
-            followerCount: profile.totalNumberOfFollowers,
-            followingCount: profile.totalNumberOfFollowing,
-            workbookCount: profile.visibleWorkbookCount,
-            avatarUrl: profile.avatarUrl,
-            followerIds: followers,
-            followingIds: following
-        }
+        let line: string = '\n' + [profile.profileName, profile.name, profile.totalNumberOfFollowers, profile.totalNumberOfFollowing,
+            profile.visibleWorkbookCount, followers.join(';'), following.join(';'), profile.avatarUrl].join(',');
+        fs.appendFile(this.authorsFile, line, 'utf-8', ()=>{
+        });
+        // this.authorsMap[profile.profileName] = {
+        //     id: profile.profileName,
+        //     name: profile.name,
+        //     followerCount: profile.totalNumberOfFollowers,
+        //     followingCount: profile.totalNumberOfFollowing,
+        //     workbookCount: profile.visibleWorkbookCount,
+        //     avatarUrl: profile.avatarUrl,
+        //     followerIds: followers,
+        //     followingIds: following
+        // }
     }
 
     private processWorkbooks(workbooks: Array<Workbook>, authorId: string) {
         workbooks.forEach(wb => {
             let id: string = wb.title + authorId;
+            let line: string = '\n' +  [id, wb.title, authorId, this.generateImageUrl(wb.defaultViewRepoUrl), 
+                this.generateEmbedUrl(wb.defaultViewRepoUrl), wb.viewCount].join(',');
+            fs.appendFile(this.workbooksFile, line, 'utf-8', () => {
+
+            });
             if (!this.workbooksMap[id]) {
                 this.workbooksMap[id] = {
                     id: id,
@@ -234,13 +284,15 @@ function prepareFiles() {
     const timeStamp: string = new Date().toISOString();
     const dateStr: string = timeStamp.substring(0, timeStamp.indexOf('.')).split(':').join('-');
     if (fs.existsSync(authorsPath)) {
-        const newPath = './data/authors-' + dateStr + '.csv';
-        fs.renameSync(authorsPath, newPath);
+        fs.unlinkSync(authorsPath);
+        // const newPath = './data/authors-' + dateStr + '.csv';
+        // fs.renameSync(authorsPath, newPath);
     }
 
     if (fs.existsSync(workbooksPath)) {
-        const newPath = './data/workbooks-' + dateStr + '.csv';
-        fs.renameSync(workbooksPath, newPath);
+        fs.unlinkSync(workbooksPath);
+        // const newPath = './data/workbooks-' + dateStr + '.csv';
+        // fs.renameSync(workbooksPath, newPath);
     }
     let scraper: Scraper = new Scraper(authorsPath, workbooksPath);
     scraper.initialize(['sandy.wang']);
