@@ -53,7 +53,7 @@ class Scraper {
     private workbooksMap: {[key: string]: WorkbookRow} = {};
     private authorScraped: number = 0;
     private authorsToQuery: Array<string> = [];
-    private maxAuthors: number = 150;
+    private maxAuthors: number = 1000;
     private concurrentCalls: number = 0;
     public constructor(private authorsFile: string, private workbooksFile: string) {
         fs.appendFileSync(authorsFile, this.GetAuthorTableSchema());
@@ -67,6 +67,10 @@ class Scraper {
     }
 
     public scrapeArtists(): void {
+        if (this.concurrentCalls > 50) {
+            console.log("~~~~~~~~~~~~~~~~ too much slow down!");
+            return;
+        }
         console.log("number of artists scraped: " + Object.keys(this.authorsMap).length);
         console.log("number of artists remaining: " + this.authorsToQuery.length);
         console.log("number of workbooks scraped: " + Object.keys(this.workbooksMap).length);
@@ -83,14 +87,10 @@ class Scraper {
                     if (Object.keys(this.authorsMap).length < this.maxAuthors) {
                         this.scrapeArtists();                        
                     }
-                    console.log("finished scraping author: " + currId);
+                    console.log("finished scraping author: " + currId + " time:" + new Date().toISOString());
                 });
                 //indicate i'm already working on this author
                 this.authorsMap[currId] = {};
-            }
-            if (this.concurrentCalls > 50) {
-                console.log("~~~~~~~~~~~~~~~~ too much slow down!");
-                return;
             }
             setTimeout(() => {
                 this.scrapeArtists();
@@ -181,8 +181,8 @@ class Scraper {
     private processAuthorProfile(profile: AuthorProfile, followers: Array<string>, following: Array<string>): void {
         let workbooks: Array<Workbook> = profile.workbooks;
         this.processWorkbooks(workbooks, profile.profileName);
-        let line: string = '\n' + [profile.profileName, profile.name, profile.totalNumberOfFollowers, profile.totalNumberOfFollowing,
-            profile.visibleWorkbookCount, followers.join(';'), following.join(';'), profile.avatarUrl].join(',');
+        let line: string = '\n' + [this.addQuotes(profile.profileName), this.addQuotes(profile.name), profile.totalNumberOfFollowers, profile.totalNumberOfFollowing,
+            profile.visibleWorkbookCount, this.addQuotes(followers.join(';')), following.join(';'), profile.avatarUrl].join(',');
         fs.appendFile(this.authorsFile, line, 'utf-8', ()=>{
         });
         // this.authorsMap[profile.profileName] = {
@@ -200,7 +200,7 @@ class Scraper {
     private processWorkbooks(workbooks: Array<Workbook>, authorId: string) {
         workbooks.forEach(wb => {
             let id: string = wb.title + authorId;
-            let line: string = '\n' +  [id, wb.title, authorId, this.generateImageUrl(wb.defaultViewRepoUrl), 
+            let line: string = '\n' +  [this.addQuotes(id), this.addQuotes(wb.title), this.addQuotes(authorId), this.generateImageUrl(wb.defaultViewRepoUrl), 
                 this.generateEmbedUrl(wb.defaultViewRepoUrl), wb.viewCount].join(',');
             fs.appendFile(this.workbooksFile, line, 'utf-8', () => {
 
@@ -269,6 +269,10 @@ class Scraper {
         req.end();
     }
 
+    public addQuotes(str: string): string {
+        return "\"" + str + "\"";
+    }
+
     public GetAuthorTableSchema(): string {
         return "id,authorName,followerCount,followingCount,workbookCount,followerIds,followingIds,avatarUrl";
     }
@@ -284,19 +288,18 @@ function prepareFiles() {
     const timeStamp: string = new Date().toISOString();
     const dateStr: string = timeStamp.substring(0, timeStamp.indexOf('.')).split(':').join('-');
     if (fs.existsSync(authorsPath)) {
-        fs.unlinkSync(authorsPath);
-        // const newPath = './data/authors-' + dateStr + '.csv';
-        // fs.renameSync(authorsPath, newPath);
+        //fs.unlinkSync(authorsPath);
+        const newPath = './data/authors-' + dateStr + '.csv';
+        fs.renameSync(authorsPath, newPath);
     }
 
     if (fs.existsSync(workbooksPath)) {
-        fs.unlinkSync(workbooksPath);
-        // const newPath = './data/workbooks-' + dateStr + '.csv';
-        // fs.renameSync(workbooksPath, newPath);
+        //fs.unlinkSync(workbooksPath);
+        const newPath = './data/workbooks-' + dateStr + '.csv';
+        fs.renameSync(workbooksPath, newPath);
     }
     let scraper: Scraper = new Scraper(authorsPath, workbooksPath);
     scraper.initialize(['sandy.wang']);
 }
 
 prepareFiles();
-
