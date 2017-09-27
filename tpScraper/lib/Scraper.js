@@ -34,7 +34,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 var http = require("http");
 var fs = require("fs");
 var WebRequest = require("web-request");
@@ -56,7 +56,7 @@ var Scraper = /** @class */ (function () {
         this.workbooksMap = {};
         this.authorScraped = 0;
         this.authorsToQuery = [];
-        this.maxAuthors = 1000;
+        this.maxAuthors = 100000;
         this.concurrentCalls = 0;
         fs.appendFileSync(authorsFile, this.GetAuthorTableSchema());
         fs.appendFileSync(workbooksFile, this.GetWorkbookTableSchema());
@@ -213,7 +213,7 @@ var Scraper = /** @class */ (function () {
         var workbooks = profile.workbooks;
         this.processWorkbooks(workbooks, profile.profileName);
         var line = '\n' + [this.addQuotes(profile.profileName), this.addQuotes(profile.name), profile.totalNumberOfFollowers, profile.totalNumberOfFollowing,
-            profile.visibleWorkbookCount, this.addQuotes(followers.join(';')), following.join(';'), profile.avatarUrl].join(',');
+            profile.visibleWorkbookCount, this.addQuotes(followers.join(';')), this.addQuotes(following.join(';')), this.addQuotes(profile.avatarUrl)].join(',');
         fs.appendFile(this.authorsFile, line, 'utf-8', function () {
         });
         // this.authorsMap[profile.profileName] = {
@@ -319,6 +319,6 @@ function prepareFiles() {
         fs.renameSync(workbooksPath, newPath);
     }
     var scraper = new Scraper(authorsPath, workbooksPath);
-    scraper.initialize(['sandy.wang']);
+    scraper.initialize(['sandy.wang', 'priya.raghuveer', 'isabella.mayer.de.moura', 'mina.ozgen']);
 }
 prepareFiles();

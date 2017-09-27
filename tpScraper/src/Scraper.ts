@@ -2,8 +2,6 @@ import http = require('http');
 import fs = require('fs');
 import * as WebRequest from 'web-request';
 
-import { Promise as es6Promise } from 'es6-promise';
-
 class AuthorRow {
     id: string;
     name: string;
@@ -53,7 +51,7 @@ class Scraper {
     private workbooksMap: {[key: string]: WorkbookRow} = {};
     private authorScraped: number = 0;
     private authorsToQuery: Array<string> = [];
-    private maxAuthors: number = 1000;
+    private maxAuthors: number = 50000;
     private concurrentCalls: number = 0;
     public constructor(private authorsFile: string, private workbooksFile: string) {
         fs.appendFileSync(authorsFile, this.GetAuthorTableSchema());
@@ -182,7 +180,7 @@ class Scraper {
         let workbooks: Array<Workbook> = profile.workbooks;
         this.processWorkbooks(workbooks, profile.profileName);
         let line: string = '\n' + [this.addQuotes(profile.profileName), this.addQuotes(profile.name), profile.totalNumberOfFollowers, profile.totalNumberOfFollowing,
-            profile.visibleWorkbookCount, this.addQuotes(followers.join(';')), following.join(';'), profile.avatarUrl].join(',');
+            profile.visibleWorkbookCount, this.addQuotes(followers.join(';')), this.addQuotes(following.join(';')), this.addQuotes(profile.avatarUrl)].join(',');
         fs.appendFile(this.authorsFile, line, 'utf-8', ()=>{
         });
         // this.authorsMap[profile.profileName] = {
@@ -299,7 +297,7 @@ function prepareFiles() {
         fs.renameSync(workbooksPath, newPath);
     }
     let scraper: Scraper = new Scraper(authorsPath, workbooksPath);
-    scraper.initialize(['sandy.wang']);
+    scraper.initialize(['sandy.wang', 'priya.raghuveer', 'isabella.mayer.de.moura', 'mina.ozgen']);
 }
 
 prepareFiles();

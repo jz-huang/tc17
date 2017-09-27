@@ -1,3 +1,5 @@
 tpScraper/node_modules/*
 tpScraper/data/*
 .DS*
+networkDiagram/node_modules/*
+networkDiagram/dist/*
