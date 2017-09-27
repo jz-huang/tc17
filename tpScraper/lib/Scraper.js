@@ -319,6 +319,6 @@ function prepareFiles() {
         fs.renameSync(workbooksPath, newPath);
     }
     var scraper = new Scraper(authorsPath, workbooksPath);
-    scraper.initialize(['sandy.wang', 'priya.raghuveer', 'isabella.mayer.de.moura', 'mina.ozgen']);
+    scraper.initialize(['sandy.wang', 'priya.raghuveer', 'isabella.mayer.de.moura', 'mina.ozgen', 'josedesouza', 'lilach.manheim', 'fahad.alsaawi', 'sudamerico', 'shawn.m.levin', 'bert.tseng']);
 }
 prepareFiles();
