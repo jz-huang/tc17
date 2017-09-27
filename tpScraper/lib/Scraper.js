@@ -56,7 +56,7 @@ var Scraper = /** @class */ (function () {
         this.workbooksMap = {};
         this.authorScraped = 0;
         this.authorsToQuery = [];
-        this.maxAuthors = 100000;
+        this.maxAuthors = 50000;
         this.concurrentCalls = 0;
         fs.appendFileSync(authorsFile, this.GetAuthorTableSchema());
         fs.appendFileSync(workbooksFile, this.GetWorkbookTableSchema());
