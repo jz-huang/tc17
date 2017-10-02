@@ -5,14 +5,14 @@ declare var tableau: any;
 
 const url: string = "https://public.tableau.com/shared/F75NCXYXF?:display_count=yes";
 const container: HTMLElement | null = document.getElementById("tableau-viz");
-const options: any = {
+const optionsTableau: any = {
     hideTabs: true,
     onFirstInteractive: () => {
         onVizInit();
     }
 }
 
-let viz:any = new tableau.Viz(container, url, options);
+let viz:any = new tableau.Viz(container, url, optionsTableau);
 let authorSheet: any;
 let workbookSheet: any;
 let dataTable: any;
@@ -26,13 +26,16 @@ class ColumnIndicies {
     avatar_url: number;
     workbook_name: number;
     embed_url: number;
+    followings: number;
 }
+
 interface Author {
     id: string;
     name: string;
     followerCount: number;
     avatar_url: string;
     views: Array<View>;
+    followings: Array<string>;
 }
 
 interface View {
@@ -60,7 +63,7 @@ function onVizInit(): void {
     workbookSheet = worksheets[1];
     console.log(authorSheet.getName());
     console.log(workbookSheet.getName());
-    authorSheet.getUnderlyingDataAsync({includeAllColumns: true, maxRows: 10000}).then((dt: any) => {
+    authorSheet.getUnderlyingDataAsync({includeAllColumns: true}).then((dt: any) => {
         // dataTable = dt;
         // let columns: any = dt.getColumns();
         // console.log(columns);
@@ -82,6 +85,9 @@ function parseDataForNetworkDiagram(dt: any): void {
     let edges: Array<Edge> = [];
     let nodes: Array<Node> = [];
     dt.getData().forEach((row: any[]) => {
+        if (row[columnIndicies.followerCount].value < 500) {
+            return;
+        }
         let id: string = row[columnIndicies.id].value;
         let author: Author = authorsMap[id];
         let view: View = {
@@ -95,34 +101,54 @@ function parseDataForNetworkDiagram(dt: any): void {
             views.push(view);
             let id: string = row[columnIndicies.id].value;
             let followers: Array<string> = (<string>row[columnIndicies.followers].value).split(";");
-            followers.forEach(follower => {
-                edges.push({
-                    to: id,
-                    from: follower,
-                    arrows: "to"
-                });
-            });
+            // followers.forEach(follower => {
+            //     edges.push({
+            //         to: id,
+            //         from: follower,
+            //         arrows: "to"
+            //     });
+            // });
             let author: Author = {
                 name: row[columnIndicies.name].value,
                 id: id,
                 followerCount: row[columnIndicies.followerCount].value,
                 views: views,
-                avatar_url: row[columnIndicies.embed_url].value
+                avatar_url: row[columnIndicies.avatar_url].value,
+                followings: row[columnIndicies.followings].value.split(";")
             }
             if (author.avatar_url === "null" || author.avatar_url == "%null%" || !author.avatar_url) {
                 throw new Error("found null: " + author.avatar_url);
             }
             let showImage: boolean = author.followerCount > 1000 && author.avatar_url != "%null%";
-            nodes.push({
-                id: author.id,
-                title: author.name,
-                shape: "circularImage", 
-                image: showImage ? author.avatar_url : "/res/no-picture.jpg"
-            });
+            // nodes.push({
+            //     id: author.id,
+            //     title: author.name,
+            //     shape: "circularImage", 
+            //     image: showImage ? author.avatar_url : "/res/no-picture.jpg"
+            // });
             authorsMap[id] = author;
         }
     });
-    initNetWorkDiagram(nodes, edges);
+    console.log(Object.keys(authorsMap).length);
+    Object.keys(authorsMap).forEach(key => {
+        let author = authorsMap[key];
+        author.followings.forEach(following => {
+            if (authorsMap[following]) {
+                edges.push({
+                    to: following,
+                    from: author.id,
+                    arrows: "to"
+                })
+            }
+        });
+        nodes.push({
+            id: author.id,
+            title: author.name,
+            shape: "circularImage",
+            image: author.avatar_url
+        });
+    });
+    initNetWorkDiagram(nodes, edges);   
 }
 
 function generateColumnIndicies(columns: any[]): ColumnIndicies {
@@ -161,6 +187,10 @@ function generateColumnIndicies(columns: any[]): ColumnIndicies {
                 result.viewCount = column.getIndex();
                 break;
             }
+            case "Following Ids": {
+                result.followings = column.getIndex();
+                break;
+            }
         }
     });
     return result;
@@ -174,15 +204,31 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
         nodes: nodes,
         edges: edges
     }
+    let options: vis.Options = {
+        nodes: {
+            scaling: {
+                max: 20,
+                min: 30
+            }
+        },
+        physics: {
+          stabilization: false,
+          barnesHut: {
+            gravitationalConstant: -800,
+            springConstant: 0.005,
+            springLength: 20
+          }
+        },
+        interaction: {
+          tooltipDelay: 200,
+          hideEdgesOnDrag: true
+        }
+      };
     if (!container) {
         throw new Error("container not found");
     }
-    let options: vis.Options = {
-        layout: {
-            improvedLayout: false
-        }
-    }
-    let network: Network = new Network(container, data,options);
+
+    let network: Network = new Network(container, data, options);
 }
 
 
