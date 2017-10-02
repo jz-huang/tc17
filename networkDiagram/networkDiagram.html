@@ -3,16 +3,15 @@
     <head>
         <meta charset="UTF-8" />
         <title>Hello React!</title>
-    </head>
-    <body>
         <!-- tableau script -->
         <script src="external/tableau-2.2.1.min.js"></script>
         <!-- Main -->
         <script src="renderDiagrams.js"></script>
-
-        <div id="viz-container">
-            <div id="tableau-viz"></div>
-            <div id="network-diagram" style="height:600px;width:800px"></div>
+    </head>
+    <body>
+        <div id="viz-container" style="display:flex;height:100vh;background-color:gray;padding-left:5%;padding-right:5%;padding-bottom:2.5%">
+            <div id="tableau-viz" style="height:100%;flex-basis:100%;"></div>
+            <div id="network-diagram" style="height:100%;flex-basis:110%;background-color:white;"></div>
         </div>
     </body>
 </html>

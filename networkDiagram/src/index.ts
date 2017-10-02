@@ -1,21 +1,15 @@
-import { Network, DataSet } from "vis";
+import { Network, DataSet, IdType } from "vis";
+
+import * as $ from "jquery";
 
 // embed tableau viz
 declare var tableau: any;
 
-const url: string = "https://public.tableau.com/shared/F75NCXYXF?:display_count=yes";
-const container: HTMLElement | null = document.getElementById("tableau-viz");
-const optionsTableau: any = {
-    hideTabs: true,
-    onFirstInteractive: () => {
-        onVizInit();
-    }
-}
-
-let viz:any = new tableau.Viz(container, url, optionsTableau);
+let viz:any;
 let authorSheet: any;
 let workbookSheet: any;
 let dataTable: any;
+let network: Network;
 
 class ColumnIndicies {
     id: number;
@@ -51,9 +45,26 @@ interface Edge {
 
 interface Node {
     id: string;
-    title: string;
+    title?: string;
+    label: string;
     shape: string;
     image: string;
+}
+
+$("body").ready(() => {
+    loadViz();
+});
+
+export function loadViz(): void {
+    const url: string = "https://public.tableau.com/shared/G5QCM8TRN?:display_count=yes";
+    const tableauContainer: HTMLElement | null = document.getElementById("tableau-viz");
+    const optionsTableau: any = {
+        hideTabs: true,
+        onFirstInteractive: () => {
+            onVizInit();
+        }
+    }
+    viz = new tableau.Viz(tableauContainer, url, optionsTableau);
 }
 
 function onVizInit(): void {
@@ -64,11 +75,6 @@ function onVizInit(): void {
     console.log(authorSheet.getName());
     console.log(workbookSheet.getName());
     authorSheet.getUnderlyingDataAsync({includeAllColumns: true}).then((dt: any) => {
-        // dataTable = dt;
-        // let columns: any = dt.getColumns();
-        // console.log(columns);
-        // let data: any[][] = dt.getData();
-        // console.log(data);
         try {
             parseDataForNetworkDiagram(dt);
         } catch (e) {
@@ -120,12 +126,6 @@ function parseDataForNetworkDiagram(dt: any): void {
                 throw new Error("found null: " + author.avatar_url);
             }
             let showImage: boolean = author.followerCount > 1000 && author.avatar_url != "%null%";
-            // nodes.push({
-            //     id: author.id,
-            //     title: author.name,
-            //     shape: "circularImage", 
-            //     image: showImage ? author.avatar_url : "/res/no-picture.jpg"
-            // });
             authorsMap[id] = author;
         }
     });
@@ -143,9 +143,9 @@ function parseDataForNetworkDiagram(dt: any): void {
         });
         nodes.push({
             id: author.id,
-            title: author.name,
+            label: author.name,
             shape: "circularImage",
-            image: author.avatar_url
+            image: author.avatar_url === "undefined" ? "./res/no-picture.jpg" : author.avatar_url
         });
     });
     initNetWorkDiagram(nodes, edges);   
@@ -204,19 +204,34 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
         nodes: nodes,
         edges: edges
     }
+    let highlightColor: string = "yellow";
     let options: vis.Options = {
+        width: "100%",
+        height: "100%",
         nodes: {
-            scaling: {
-                max: 20,
-                min: 30
+            borderWidth:5,
+            borderWidthSelected: 7,
+            size:50,
+            color: {
+              border: "#222222",
+              highlight: {
+                  border: highlightColor
+              }
+            },
+            brokenImage: "./res/no-picture.jpg"
+        },
+        edges: {
+            color: {
+                color: "lightgrey",
+                highlight: highlightColor
             }
         },
         physics: {
           stabilization: false,
           barnesHut: {
-            gravitationalConstant: -800,
-            springConstant: 0.005,
-            springLength: 20
+            gravitationalConstant: -8000,
+            springConstant: 0.01,
+            springLength: 100
           }
         },
         interaction: {
@@ -228,7 +243,30 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
         throw new Error("container not found");
     }
 
-    let network: Network = new Network(container, data, options);
+    network = new Network(container, data, options);
+    zomeDefault();
+
+    //event handlers
+    network.on("oncontext", () => {
+        zomeDefault();
+    });
+
+    network.on("selectNode", (result) => {
+        let moveToOptions: vis.MoveToOptions = {
+        }
+    });
+}
+
+function zomeDefault(): void {
+    let moveToOptions: vis.MoveToOptions = {
+        position: {x: 0, y: 0},
+        scale: 0.5,
+        animation: {
+            duration: 500,
+            easingFunction: "easeInOutQuad", 
+        }
+    }
+    network.moveTo(moveToOptions);
 }
 
 

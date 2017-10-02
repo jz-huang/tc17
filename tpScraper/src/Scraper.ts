@@ -183,16 +183,6 @@ class Scraper {
             profile.visibleWorkbookCount, this.addQuotes(followers.join(';')), this.addQuotes(following.join(';')), this.addQuotes(profile.avatarUrl)].join(',');
         fs.appendFile(this.authorsFile, line, 'utf-8', ()=>{
         });
-        // this.authorsMap[profile.profileName] = {
-        //     id: profile.profileName,
-        //     name: profile.name,
-        //     followerCount: profile.totalNumberOfFollowers,
-        //     followingCount: profile.totalNumberOfFollowing,
-        //     workbookCount: profile.visibleWorkbookCount,
-        //     avatarUrl: profile.avatarUrl,
-        //     followerIds: followers,
-        //     followingIds: following
-        // }
     }
 
     private processWorkbooks(workbooks: Array<Workbook>, authorId: string) {
