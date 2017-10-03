@@ -204,7 +204,7 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
         nodes: nodes,
         edges: edges
     }
-    let highlightColor: string = "yellow";
+    let highlightColor: string = "red";
     let options: vis.Options = {
         width: "100%",
         height: "100%",
@@ -253,6 +253,8 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
 
     network.on("selectNode", (result) => {
         let moveToOptions: vis.MoveToOptions = {
+            scale:0.5,
+            
         }
     });
 }

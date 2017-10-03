@@ -2,16 +2,52 @@
 <html>
     <head>
         <meta charset="UTF-8" />
-        <title>Hello React!</title>
+        <title>Find Your Jedi</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>        
+        <script src="https://www.atlasestateagents.co.uk/javascript/tether.min.js"></script>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.5/css/bootstrap.min.css" integrity="sha384-AysaV+vQoT3kOAXZkl02PThvDr8HYKPZhNT5h/CXfBThSRXQ6jW5DO2ekP5ViFdi" crossorigin="anonymous">
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.5/js/bootstrap.min.js" integrity="sha384-BLiI7JTZm+JWlgKa0M0kGRpJbF2J8q+qreVrKBC47e3K6BW78kGLrCkeRX6I9RoK" crossorigin="anonymous"></script>
+
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+        <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
         <!-- tableau script -->
         <script src="external/tableau-2.2.1.min.js"></script>
         <!-- Main -->
         <script src="renderDiagrams.js"></script>
+
+        <!-- simple styling -->
+        <style>
+            .search-input {
+                font-size: 30px;
+            }
+        </style>
     </head>
-    <body>
-        <div id="viz-container" style="display:flex;height:100vh;background-color:gray;padding-left:5%;padding-right:5%;padding-bottom:2.5%">
-            <div id="tableau-viz" style="height:100%;flex-basis:100%;"></div>
-            <div id="network-diagram" style="height:100%;flex-basis:110%;background-color:white;"></div>
+    <body style="height:100vh">
+        <div id="nav-bar-container" style="padding-right:5%;padding-left:5%;width:inherit;">
+            <nav class="navbar navbar-dark navbar-full" style="background-color: #2d4b65; clear:both; height:95px">
+                    <form class="form-inline" style="padding-left: 3%; float:left;">
+                        <span class="navbar-text" style="color:white;font-size:2.5em">
+                            Find Your Jedi!   
+                        </span>
+                    </form>
+                    <form class="form-inline" style="padding-left: 20px; float:right; padding-top:20px">
+                        <div class = "ui-widget" style="float:left">
+                            <input class="form-control" type="text" placeholder="Find Your Jedi" id="artist-search-box">
+                        </div>
+                    </form>
+                    <form class="form-inline" style="padding-left: 3%; float:right; padding-top:10px">
+                        <span class="navbar-text input-large" style="color:white;font-size:1.8em">
+                            Search Jedi's               
+                        </span>
+                    </form>
+                </nav>        
+        </div>
+        <div id="separation" style="background-color:white;height:1px;width:100%"></div>
+        <div id="viz-container" style="height:90%;background-color:white;padding-left:5%;padding-right:5%;padding-bottom:2.5%;">
+            <div style="display:flex;border:1px solid lightgrey;height:100%;">
+                <div id="tableau-viz" style="height:90%;flex-basis:100%;"></div>
+                <div id="network-diagram" style="height:90%;flex-basis:110%;background-color:white;"></div>
+            </div>
         </div>
     </body>
 </html>
