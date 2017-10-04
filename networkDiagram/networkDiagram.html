@@ -7,6 +7,7 @@
         <script src="https://www.atlasestateagents.co.uk/javascript/tether.min.js"></script>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.5/css/bootstrap.min.css" integrity="sha384-AysaV+vQoT3kOAXZkl02PThvDr8HYKPZhNT5h/CXfBThSRXQ6jW5DO2ekP5ViFdi" crossorigin="anonymous">
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.5/js/bootstrap.min.js" integrity="sha384-BLiI7JTZm+JWlgKa0M0kGRpJbF2J8q+qreVrKBC47e3K6BW78kGLrCkeRX6I9RoK" crossorigin="anonymous"></script>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">        
 
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
         <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
@@ -70,7 +71,14 @@
         <div id="viz-container" style="height:95%;background-color:white;padding-left:5%;padding-right:5%;padding-bottom:2.5%;">
             <div style="display:flex;border:1px solid lightgrey;height:100%;">
                 <div id="tableau-viz" style="height:100%;flex-basis:100%;"></div>
-                <div id="network-diagram" style="height:100%;flex-basis:110%;background-color:white;"></div>
+                <div id="network-diagram-container" style="height:100%;flex-basis:110%;background-color:white;">
+                    <div style="float:right">
+                        <button type="button" class="btn btn-secondary" id="zoom-button">
+                            <i class="fa fa-search-minus" aria-hidden="true"></i>  Zoom Out
+                        </button>
+                    </div>
+                    <div id="network-diagram" style="height:100%;width:100%"></div>                        
+                </div>
             </div>
         </div>
     </body>

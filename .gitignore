@@ -5,3 +5,4 @@ networkDiagram/node_modules/*
 networkDiagram/dist/*
 ./node_modules/*
 /node_modules
+npm*

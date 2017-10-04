@@ -313,12 +313,9 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
     network.on("oncontext", () => {
         zomeDefault();
     });
-
-    network.on("click", (result) => {
-        if (result.nodes.length === 0) {
-            zomeDefault
-        }
-    })
+    $("#zoom-button").click(() => {
+        zomeDefault();
+    });
 
     network.on("selectNode", (result) => {
         if (result.nodes.length === 1) {
