@@ -1,6 +1,9 @@
 import { Network, DataSet, IdType } from "vis";
 
-import * as $ from "jquery";
+//import * as $ from "jquery";
+
+import "jquery";
+import "bootstrap"; 
 
 // embed tableau viz
 declare var tableau: any;
@@ -10,6 +13,7 @@ let authorSheet: any;
 let workbookSheet: any;
 let dataTable: any;
 let network: Network;
+let authorsMap: {[key: string]: Author} = {};
 
 class ColumnIndicies {
     id: number;
@@ -35,6 +39,7 @@ interface Author {
 interface View {
     name: string;
     embed_url: string;
+    viewCount: number;
 }
 
 interface Edge {
@@ -81,13 +86,13 @@ function onVizInit(): void {
             console.log(e);
         }
     });
+    viz.addEventListener(tableau.TableauEventName.MARKS_SELECTION, selectionEventHandler);
 }
 
 function parseDataForNetworkDiagram(dt: any): void {
     let columns: any = dt.getColumns();
     let columnIndicies: ColumnIndicies = generateColumnIndicies(columns);
     let authors: Array<Author> = [];
-    let authorsMap: {[key: string]: Author} = {};
     let edges: Array<Edge> = [];
     let nodes: Array<Node> = [];
     dt.getData().forEach((row: any[]) => {
@@ -99,6 +104,7 @@ function parseDataForNetworkDiagram(dt: any): void {
         let view: View = {
             name: row[columnIndicies.workbook_name].value,
             embed_url: row[columnIndicies.embed_url].value,
+            viewCount: row[columnIndicies.viewCount].value
         }
         if (author) {
             author.views.push(view);
@@ -107,13 +113,6 @@ function parseDataForNetworkDiagram(dt: any): void {
             views.push(view);
             let id: string = row[columnIndicies.id].value;
             let followers: Array<string> = (<string>row[columnIndicies.followers].value).split(";");
-            // followers.forEach(follower => {
-            //     edges.push({
-            //         to: id,
-            //         from: follower,
-            //         arrows: "to"
-            //     });
-            // });
             let author: Author = {
                 name: row[columnIndicies.name].value,
                 id: id,
@@ -122,10 +121,6 @@ function parseDataForNetworkDiagram(dt: any): void {
                 avatar_url: row[columnIndicies.avatar_url].value,
                 followings: row[columnIndicies.followings].value.split(";")
             }
-            if (author.avatar_url === "null" || author.avatar_url == "%null%" || !author.avatar_url) {
-                throw new Error("found null: " + author.avatar_url);
-            }
-            let showImage: boolean = author.followerCount > 1000 && author.avatar_url != "%null%";
             authorsMap[id] = author;
         }
     });
@@ -149,6 +144,30 @@ function parseDataForNetworkDiagram(dt: any): void {
         });
     });
     initNetWorkDiagram(nodes, edges);   
+}
+
+function selectAuthor(id: string) {
+    if (authorsMap[id]) {
+        authorSheet.selectMarksAsync("Id", id, tableau.SelectionUpdateType.REPLACE);        
+    }
+}
+
+function selectionEventHandler(event: any) {
+    console.log("Got Event!");
+    event.getMarksAsync().then((marks: any[]) => {
+        if (marks.length === 1) {
+            let mark: any = marks[0];
+            let pair: any = mark.getPairs().find((pair: any) => {
+                return pair.fieldName === "Id";
+            });
+            if (pair) {
+                if (authorsMap[pair.value]) {
+                    console.log("id is: " + pair.value);
+                    selectNode(pair.value);
+                }
+            }
+        }
+    });
 }
 
 function generateColumnIndicies(columns: any[]): ColumnIndicies {
@@ -204,7 +223,7 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
         nodes: nodes,
         edges: edges
     }
-    let highlightColor: string = "red";
+    let highlightColor: string = "#2d4b65";
     let options: vis.Options = {
         width: "100%",
         height: "100%",
@@ -251,12 +270,39 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
         zomeDefault();
     });
 
+    network.on("click", (result) => {
+        if (result.nodes.length === 0) {
+            zomeDefault
+        }
+    })
+
     network.on("selectNode", (result) => {
-        let moveToOptions: vis.MoveToOptions = {
-            scale:0.5,
-            
+        if (result.nodes.length === 1) {
+            selectAuthor(result.nodes[0]);
+            selectNode(result.nodes[0]);
         }
     });
+
+    network.on("doubleClick", (result) => {
+        console.log("double clicked!!!");
+        if (result.nodes.length === 1) {
+            popModal(result.nodes[0]);
+        } else {
+            console.log("no node selected");
+        }
+    })
+}
+
+function selectNode(nodeId: IdType) {
+    let focusOptions: vis.FocusOptions = {
+        scale:0.7,
+        animation: {
+            duration: 500,
+            easingFunction: "easeInOutQuad"
+        }
+    }
+    network.focus(nodeId, focusOptions);
+    network.selectNodes([nodeId], true);
 }
 
 function zomeDefault(): void {
@@ -270,5 +316,74 @@ function zomeDefault(): void {
     }
     network.moveTo(moveToOptions);
 }
+
+function popModal(nodeId: IdType): void {
+    let author: Author = authorsMap[nodeId];
+    if (author) {
+        $("#authorDetails").modal("show");
+        $("#modal-author-name").text(author.name);
+        $("#modal-author-picture").attr("src", author.avatar_url);
+        let viewsSorted = author.views.sort((a, b) => {
+            return a.viewCount > b.viewCount ? 0 : 1;
+        });
+        for (let i = 0; i < viewsSorted.length; i++) {
+            let preload: boolean = i < 5;
+            createCollapsibleViz(viewsSorted[i], preload);
+        }
+    }
+}
+
+//really wish i used react here... 
+function createCollapsibleViz(view: View, preload: boolean): void {
+    let baseId = view.name.replace(/\W/g, '');
+    //panel
+    let panel = $("<div>");
+    panel.addClass("panel panel-default");
+    panel.attr("id", baseId);
+    //panel header
+    let panelHeader = $("<div>");
+    panelHeader.addClass("panel-heading");
+    let panelTitle = $("<h4>");
+    panelTitle.addClass("panel-title");
+    //panel control
+    let panelControl = $("<a>");
+    panelControl.attr("data-toggle", "collapse");
+    let collapseId: string = baseId + "-viz";
+    panelControl.attr("href", "#" + collapseId);
+    panelControl.text(view.name);
+
+    panelTitle.append(panelControl);
+    panelHeader.append(panelTitle);
+    panel.append(panelHeader);
+
+    //collapse content
+    let collapseContent = $("<div>");
+    collapseContent.addClass("panel-collapse collapse");
+    collapseContent.attr("id", collapseId);
+    let body = $("<div>");
+    let containerId = baseId + "-container";
+    body.attr("id", containerId);
+
+    collapseContent.append(body);
+    panel.append(collapseContent);
+
+    $("#viz-panels").append(panel);
+    if (preload) {
+        loadModalViz(containerId, view.embed_url);
+    } else {
+        $("#" + baseId).on("shown.bs.collapse", () => {
+            loadModalViz(containerId, view.embed_url);            
+        });
+    }
+}
+
+function loadModalViz(containerId: string, url: string) {
+    const optionsTableau: any = {
+        hideTabs: true,
+    }
+    let modalViz = new tableau.Viz(document.getElementById(containerId), url, optionsTableau);
+}
+
+
 
 

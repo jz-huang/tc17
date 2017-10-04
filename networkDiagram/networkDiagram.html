@@ -17,12 +17,35 @@
 
         <!-- simple styling -->
         <style>
-            .search-input {
-                font-size: 30px;
+            .modal .modal-dialog {
+                width: 850px !important;
             }
         </style>
     </head>
     <body style="height:100vh">
+        <!-- Modal Author Details -->
+        <div class="modal fade bd-example-modal-lg" id="authorDetails" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modal-author-name">Modal title</h2>
+                    <img id="modal-author-picture"  onerror="this.src='./res/no-picture.jpg'" src=""  align="middle" width="150"/>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <h5 class="modal-text"> Visualizations </h5>
+                    <div class="panel-group" id="viz-panels">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+            </div>
+        </div>
+
         <div id="nav-bar-container" style="padding-right:5%;padding-left:5%;width:inherit;">
             <nav class="navbar navbar-dark navbar-full" style="background-color: #2d4b65; clear:both; height:95px">
                     <form class="form-inline" style="padding-left: 3%; float:left;">
