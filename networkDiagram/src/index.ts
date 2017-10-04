@@ -3,7 +3,8 @@ import { Network, DataSet, IdType } from "vis";
 //import * as $ from "jquery";
 
 import "jquery";
-import "bootstrap"; 
+import "bootstrap";
+import "select2"; 
 
 // embed tableau viz
 declare var tableau: any;
@@ -14,7 +15,7 @@ let workbookSheet: any;
 let dataTable: any;
 let network: Network;
 let authorsMap: {[key: string]: Author} = {};
-
+let fromApi: boolean = false;
 class ColumnIndicies {
     id: number;
     name: number;
@@ -56,12 +57,19 @@ interface Node {
     image: string;
 }
 
+$("document").ready(() => {
+    $('#search-box').select2({
+        width: 'resolve',
+        allowClear: true
+    });
+});
+
 $("body").ready(() => {
     loadViz();
 });
 
 export function loadViz(): void {
-    const url: string = "https://public.tableau.com/shared/G5QCM8TRN?:display_count=yes";
+    const url: string = "https://public.tableau.com/views/PublicAuthors/FindYouJedi?:embed=y&:display_count=yes";
     const tableauContainer: HTMLElement | null = document.getElementById("tableau-viz");
     const optionsTableau: any = {
         hideTabs: true,
@@ -75,8 +83,13 @@ export function loadViz(): void {
 function onVizInit(): void {
     let dashboard: any = viz.getWorkbook().getActiveSheet();
     let worksheets: Array<any> = dashboard.getWorksheets();
-    authorSheet = worksheets[0];
-    workbookSheet = worksheets[1];
+    worksheets.forEach((worksheet: any) => {
+        if (worksheet.getName() === "Follower Count vs. WorkbookCount") {
+            authorSheet = worksheet;
+        } else {
+            workbookSheet = worksheet;
+        }
+    });
     console.log(authorSheet.getName());
     console.log(workbookSheet.getName());
     authorSheet.getUnderlyingDataAsync({includeAllColumns: true}).then((dt: any) => {
@@ -104,7 +117,7 @@ function parseDataForNetworkDiagram(dt: any): void {
         let view: View = {
             name: row[columnIndicies.workbook_name].value,
             embed_url: row[columnIndicies.embed_url].value,
-            viewCount: row[columnIndicies.viewCount].value
+            viewCount: Number(row[columnIndicies.viewCount].value)
         }
         if (author) {
             author.views.push(view);
@@ -143,18 +156,46 @@ function parseDataForNetworkDiagram(dt: any): void {
             image: author.avatar_url === "undefined" ? "./res/no-picture.jpg" : author.avatar_url
         });
     });
+    setupSearchBox();
     initNetWorkDiagram(nodes, edges);   
+}
+
+function setupSearchBox(): void {
+    $('#search-box').select2({
+        width: 'resolve',
+        data: Object.keys(authorsMap).map(key => {
+            return {
+                text: authorsMap[key].name,
+                id: authorsMap[key].id
+            }
+        }),
+        allowClear: true
+    });
+
+    $('#search-box').on("select2:select", (selected: any) => {
+        selectAuthor(selected.params.data.id);
+        selectNode(selected.params.data.id);
+    });
 }
 
 function selectAuthor(id: string) {
     if (authorsMap[id]) {
-        authorSheet.selectMarksAsync("Id", id, tableau.SelectionUpdateType.REPLACE);        
+        fromApi = true;
+        try {
+            authorSheet.selectMarksAsync("Id", id, tableau.SelectionUpdateType.REPLACE);        
+        } catch(e) {
+            console.log(e);
+        }
     }
 }
 
 function selectionEventHandler(event: any) {
     console.log("Got Event!");
     event.getMarksAsync().then((marks: any[]) => {
+        if (fromApi) {
+            fromApi = false;
+            return;
+        }
         if (marks.length === 1) {
             let mark: any = marks[0];
             let pair: any = mark.getPairs().find((pair: any) => {
@@ -237,7 +278,10 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
                   border: highlightColor
               }
             },
-            brokenImage: "./res/no-picture.jpg"
+            brokenImage: "./res/no-picture.jpg",
+            font: {
+                size: 25
+            }
         },
         edges: {
             color: {
@@ -290,12 +334,12 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
         } else {
             console.log("no node selected");
         }
-    })
+    });
 }
 
 function selectNode(nodeId: IdType) {
     let focusOptions: vis.FocusOptions = {
-        scale:0.7,
+        scale:0.8,
         animation: {
             duration: 500,
             easingFunction: "easeInOutQuad"
@@ -324,17 +368,24 @@ function popModal(nodeId: IdType): void {
         $("#modal-author-name").text(author.name);
         $("#modal-author-picture").attr("src", author.avatar_url);
         let viewsSorted = author.views.sort((a, b) => {
-            return a.viewCount > b.viewCount ? 0 : 1;
+            if (a.viewCount === b.viewCount) {
+                return 0;
+            } else if (a.viewCount > b.viewCount) {
+                return -1; 
+            } else {
+                return 1;
+            }
         });
+        $("#viz-panels").html("");
         for (let i = 0; i < viewsSorted.length; i++) {
             let preload: boolean = i < 5;
-            createCollapsibleViz(viewsSorted[i], preload);
+            createCollapsibleViz(viewsSorted[i], preload, i);
         }
     }
 }
 
 //really wish i used react here... 
-function createCollapsibleViz(view: View, preload: boolean): void {
+function createCollapsibleViz(view: View, preload: boolean, index: number): void {
     let baseId = view.name.replace(/\W/g, '');
     //panel
     let panel = $("<div>");
@@ -344,13 +395,22 @@ function createCollapsibleViz(view: View, preload: boolean): void {
     let panelHeader = $("<div>");
     panelHeader.addClass("panel-heading");
     let panelTitle = $("<h4>");
+    if (index % 2 == 0) {
+        panelTitle.css("background-color", "#2d4b65");
+    }
     panelTitle.addClass("panel-title");
     //panel control
     let panelControl = $("<a>");
     panelControl.attr("data-toggle", "collapse");
+    panelControl.css("text-decoration", "none");
     let collapseId: string = baseId + "-viz";
     panelControl.attr("href", "#" + collapseId);
     panelControl.text(view.name);
+    if (index % 2 === 0) {
+        panelControl.css("color", "white");
+    } else {
+        panelControl.css("color", "black");
+    }
 
     panelTitle.append(panelControl);
     panelHeader.append(panelTitle);

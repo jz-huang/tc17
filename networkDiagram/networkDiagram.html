@@ -10,6 +10,9 @@
 
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
         <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.4/css/select2.min.css" rel="stylesheet" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.4/js/select2.min.js"></script>
         <!-- tableau script -->
         <script src="external/tableau-2.2.1.min.js"></script>
         <!-- Main -->
@@ -18,7 +21,7 @@
         <!-- simple styling -->
         <style>
             .modal .modal-dialog {
-                width: 850px !important;
+                width: 1200px !important;
             }
         </style>
     </head>
@@ -34,8 +37,8 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body">
-                    <h5 class="modal-text"> Visualizations </h5>
+                <div class="modal-body" style="max-height:100vh;">
+                    <h3 class="modal-text"> Visualizations </h3>
                     <div class="panel-group" id="viz-panels">
                     </div>
                 </div>
@@ -46,30 +49,28 @@
             </div>
         </div>
 
-        <div id="nav-bar-container" style="padding-right:5%;padding-left:5%;width:inherit;">
-            <nav class="navbar navbar-dark navbar-full" style="background-color: #2d4b65; clear:both; height:95px">
-                    <form class="form-inline" style="padding-left: 3%; float:left;">
-                        <span class="navbar-text" style="color:white;font-size:2.5em">
-                            Find Your Jedi!   
-                        </span>
-                    </form>
-                    <form class="form-inline" style="padding-left: 20px; float:right; padding-top:20px">
-                        <div class = "ui-widget" style="float:left">
-                            <input class="form-control" type="text" placeholder="Find Your Jedi" id="artist-search-box">
-                        </div>
-                    </form>
-                    <form class="form-inline" style="padding-left: 3%; float:right; padding-top:10px">
-                        <span class="navbar-text input-large" style="color:white;font-size:1.8em">
-                            Search Jedi's               
-                        </span>
-                    </form>
-                </nav>        
+        <!-- main page -->
+        <div style="padding-right:5%;padding-left:5%;width:inherit;">
+            <div style="background-color: #2d4b65; height:95px">
+                <span style="color:white;font-size:2.5em;float:left;padding-left: 3%;padding-top:10px;">
+                    Find Your Jedi!
+                </span>
+                <span style="float:right;width:20%;padding-top:32px;padding-right:3%">
+                    <select id="search-box" style="width:100%;">
+                        <option></option>
+                    </select>                                        
+                </span>
+                <span style="color:white;font-size:1.8em;float:right;padding-right: 1%;padding-top: 25px;">
+                    Search Jedi's
+                </span>
+            </div>
         </div>
+
         <div id="separation" style="background-color:white;height:1px;width:100%"></div>
-        <div id="viz-container" style="height:90%;background-color:white;padding-left:5%;padding-right:5%;padding-bottom:2.5%;">
+        <div id="viz-container" style="height:95%;background-color:white;padding-left:5%;padding-right:5%;padding-bottom:2.5%;">
             <div style="display:flex;border:1px solid lightgrey;height:100%;">
-                <div id="tableau-viz" style="height:90%;flex-basis:100%;"></div>
-                <div id="network-diagram" style="height:90%;flex-basis:110%;background-color:white;"></div>
+                <div id="tableau-viz" style="height:100%;flex-basis:100%;"></div>
+                <div id="network-diagram" style="height:100%;flex-basis:110%;background-color:white;"></div>
             </div>
         </div>
     </body>
