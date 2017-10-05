@@ -3,6 +3,7 @@ tpScraper/data/*
 .DS*
 networkDiagram/node_modules/*
 networkDiagram/dist/*
+writeback/node_modules/*
 ./node_modules/*
 /node_modules
 npm*
