@@ -307,6 +307,7 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
     }
 
     network = new Network(container, data, options);
+    
     zomeDefault();
 
     //event handlers
@@ -336,7 +337,7 @@ function initNetWorkDiagram(nodes: Array<Node>, edges: Array<Edge>) {
 
 function selectNode(nodeId: IdType) {
     let focusOptions: vis.FocusOptions = {
-        scale:0.8,
+        scale:0.7,
         animation: {
             duration: 500,
             easingFunction: "easeInOutQuad"
