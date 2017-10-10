@@ -39,13 +39,13 @@ function appendToSheet(name, sale, date) {
         spreadsheetId: '1ujsct_iHLJmwty8PdmjfuuUsNJqoBEHLTyO8jXAzZps',  
         // The A1 notation of a range to search for a logical table of data.
         // Values will be appended after the last row of the table.
-        range: 'A2:C2',  // TODO: Update placeholder value.
+        range: 'A2:C2',  
 
         // How the input data should be interpreted.
-        valueInputOption: 'RAW',  // TODO: Update placeholder value.
+        valueInputOption: 'RAW',  
 
         // How the input data should be inserted.
-        insertDataOption: 'INSERT_ROWS',  // TODO: Update placeholder value.
+        insertDataOption: 'INSERT_ROWS',  
       };
     let valueRangeBody = {
         "majorDimension": "ROWS",
